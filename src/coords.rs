@@ -2,23 +2,36 @@ use crate::pieces::{Piece, PieceType};
 
 
 pub struct MoveCoords {
-    piece: PieceType,
-    from: Coords,
-    to: Coords,
-    takes: bool,
+    pub piece: Piece,
+    pub from: Coords,
+    pub to: Coords,
+    pub takes: bool,
+    pub promotion: Option<PieceType>,
 }
 
-#[derive(PartialEq, Debug)]
+impl MoveCoords {
+    pub fn promote(&self, piece: PieceType) -> Self {
+        MoveCoords {
+            piece: self.piece,
+            from: self.from,
+            to: self.to,
+            takes: self.takes,
+            promotion: Some(piece),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Coords {
-    pub x: usize,
-    pub y: usize,
+    pub x: u8,
+    pub y: u8,
 }
 
 impl Coords {
-    pub fn new(x: usize, y: usize) -> Self {
+    pub fn new(x: u8, y: u8) -> Self {
         Coords { x, y }
     }
-    pub fn std(&self) -> (char, usize) {
+    pub fn std(&self) -> (char, u8) {
         let x = (self.x as u8 + 97) as char;
         let y = 8 - self.y;
         (x, y)
@@ -38,14 +51,21 @@ impl std::str::FromStr for Coords {
             Some(c) => c,
             None => return Err("No input"),
         };
-        let x = x as usize - 97;
-        let y = 8 - y.to_digit(10).unwrap() as usize;
+        let x = x as u8 - 97;
+        let y = 8 - y.to_digit(10).unwrap() as u8;
         Ok(Coords::new(x, y))
     }
 }
 
-impl From<(usize, usize)> for Coords {
-    fn from((x, y): (usize, usize)) -> Self {
+impl std::fmt::Display for Coords {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let (x, y) = self.std();
+        write!(f, "{}{}", x, y)
+    }
+}
+
+impl From<(u8, u8)> for Coords {
+    fn from((x, y): (u8, u8)) -> Self {
         Coords::new(x, y)
     }
 }
@@ -53,13 +73,17 @@ impl From<(usize, usize)> for Coords {
 impl std::fmt::Display for MoveCoords {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let (x, y) = self.to.std();
-        let start = if PieceType::Pawn == self.piece {
-            x
+        if PieceType::Pawn == self.piece.piece_type && !self.takes {
+            return write!(f, "{}{}", x, y);
+        }
+        let start = if PieceType::Pawn == self.piece.piece_type {
+            self.from.std().0
         } else {
             self.piece.to_string().chars().next().unwrap()
         };
         let takes = if self.takes { "x" } else { "" };
-        write!(f, "{}{}{}{}", start, y, takes, self.to.std())
+
+        write!(f, "{}{}{}{}", start, takes, x, y)
     }
 }
 
@@ -70,19 +94,53 @@ mod tests {
     #[test]
     fn test_move_coords() {
         let mc = MoveCoords {
-            piece: PieceType::Pawn,
+            piece: Piece::white(PieceType::Pawn),
             from: "c2".parse().unwrap(),
             to: "c4".parse().unwrap(),
             takes: false,
+            promotion: None,
         };
-        println!("{}", mc.to_string());
+        assert!(mc.to_string() == "c4");
         let mc = MoveCoords {
-            piece: PieceType::Pawn,
+            piece: Piece::white(PieceType::Pawn),
             from: "c2".parse().unwrap(),
             to: "d3".parse().unwrap(),
             takes: true,
+            promotion: None,
         };
-        println!("{}", mc.to_string());
+        assert!(mc.to_string() == "cxd3");
+        let mc = MoveCoords {
+            piece: Piece::white(PieceType::Rook),
+            from: "a1".parse().unwrap(),
+            to: "a8".parse().unwrap(),
+            takes: true,
+            promotion: None,
+        };
+        assert!(mc.to_string() == "♖xa8");
+        let mc = MoveCoords {
+            piece: Piece::white(PieceType::Rook),
+            from: "a1".parse().unwrap(),
+            to: "a8".parse().unwrap(),
+            takes: false,
+            promotion: None,
+        };
+        assert!(mc.to_string() == "♖a8");
+        let mc = MoveCoords {
+            piece: Piece::white(PieceType::Rook),
+            from: "a1".parse().unwrap(),
+            to: "h1".parse().unwrap(),
+            takes: true,
+            promotion: None,
+        };
+        assert!(mc.to_string() == "♖xh1");
+        let mc = MoveCoords {
+            piece: Piece::white(PieceType::Queen),
+            from: "a1".parse().unwrap(),
+            to: "h1".parse().unwrap(),
+            takes: false,
+            promotion: None,
+        };
+        assert!(mc.to_string() == "♕h1");
     }
 
     #[test]
