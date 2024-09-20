@@ -65,13 +65,13 @@ impl Board {
         let y = coord.y as usize;
         self.state[y][x]
     }
-    fn is_empty(&self, coord: impl Into<Coords>) -> bool {
+    pub fn is_empty(&self, coord: impl Into<Coords>) -> bool {
         let coord: Coords = coord.into();
         let x = coord.x as usize;
         let y = coord.y as usize;
         self.state[y][x].piece_type == PieceType::Empty
     }
-    fn piece_color(&self, coord: impl Into<Coords>) -> Option<Color> {
+    pub fn piece_color(&self, coord: impl Into<Coords>) -> Option<Color> {
         let coord: Coords = coord.into();
         let x = coord.x as usize;
         let y = coord.y as usize;
@@ -184,52 +184,13 @@ impl Board {
                 moves
             }
             PieceType::Bishop => {
-                let mut moves = vec![];
-                let x = x as i8;
-                let y = y as i8;
-
-                let mut top_left = vec![];
-                let mut top_right = vec![];
-                let mut bottom_left = vec![];
-                let mut bottom_right = vec![];
-                for i in 1..8 {
-                    top_left.push((x - i, y - i));
-                    top_right.push((x + i, y - i));
-                    bottom_left.push((x - i, y + i));
-                    bottom_right.push((x + i, y + i));
-                }
-                let parse_diag = |mut diag: Vec<(i8, i8)>, moves: &mut Vec<MoveCoords>| {
-                    diag.retain(|(x, y)| *x >= 0 && *x < 8 && *y >= 0 && *y < 8);
-                    let diag = diag.iter().map(|(x, y)| Coords::new(*x as u8, *y as u8));
-                    for mv in diag {
-                        if self.is_empty(mv) {
-                            moves.push(MoveCoords {
-                                piece,
-                                from: coord,
-                                to: mv,
-                                takes: false,
-                                promotion: None,
-                            });
-                        } else if self.piece_color(mv) != self.piece_color(coord) {
-                            moves.push(MoveCoords {
-                                piece,
-                                from: coord,
-                                to: mv,
-                                takes: true,
-                                promotion: None,
-                            });
-                            break;
-                        } else {
-                            break;
-                        }
-                    }
-                };
-                parse_diag(top_left, &mut moves);
-                parse_diag(top_right, &mut moves);
-                parse_diag(bottom_left, &mut moves);
-                parse_diag(bottom_right, &mut moves);
-
-                moves
+                self.bishop_moves(coord, piece.color)
+            }
+            PieceType::Rook => {
+                self.rook_moves(coord, piece.color)
+            }
+            PieceType::Queen => {
+                self.queen_moves(coord, piece.color)
             }
             PieceType::King => {
                 let mut moves = vec![];
