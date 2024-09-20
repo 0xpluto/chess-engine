@@ -1,5 +1,6 @@
+use enum_iterator::Sequence;
 
-#[derive(Default, Copy, Clone, PartialEq)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, Hash, Sequence)]
 pub enum PieceType {
     #[default]
     Empty,
@@ -11,7 +12,7 @@ pub enum PieceType {
     King,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Sequence)]
 pub enum Color {
     White,
     Black,
@@ -46,14 +47,26 @@ impl Piece {
 
 impl std::fmt::Display for PieceType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            PieceType::Empty => write!(f, " "),
-            PieceType::Pawn => write!(f, "P"),
-            PieceType::Knight => write!(f, "N"),
-            PieceType::Bishop => write!(f, "B"),
-            PieceType::Rook => write!(f, "R"),
-            PieceType::Queen => write!(f, "♕"),
-            PieceType::King => write!(f, "♔"),
+        if f.alternate() {
+            match self {
+                PieceType::Empty => write!(f, "empty"),
+                PieceType::Pawn => write!(f, "pawn"),
+                PieceType::Knight => write!(f, "knight"),
+                PieceType::Bishop => write!(f, "bishop"),
+                PieceType::Rook => write!(f, "rook"),
+                PieceType::Queen => write!(f, "queen"),
+                PieceType::King => write!(f, "king"),
+            }
+        } else {
+            match self {
+                PieceType::Empty => write!(f, " "),
+                PieceType::Pawn => write!(f, "P"),
+                PieceType::Knight => write!(f, "N"),
+                PieceType::Bishop => write!(f, "B"),
+                PieceType::Rook => write!(f, "R"),
+                PieceType::Queen => write!(f, "♕"),
+                PieceType::King => write!(f, "♔"),
+            }
         }
     }
 }

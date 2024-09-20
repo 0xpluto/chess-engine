@@ -13,8 +13,8 @@ pub struct Board {
     //  ♙  ♙  ♙  ♙  ♙  ♙  ♙  ♙
     //  ♖  ♘  ♗  ♕  ♔  ♗  ♘  ♖
     /// White side is row 0 and 1, black side is row 6 and 7
-    state: [[Piece; 8]; 8],
-    turn: Color,
+    pub state: [[Piece; 8]; 8],
+    pub turn: Color,
 }
 
 impl Board {
@@ -59,7 +59,7 @@ impl Board {
         let y = coord.y as usize;
         self.state[y][x] == piece
     }
-    fn get_piece(&self, coord: impl Into<Coords>) -> Piece {
+    pub fn get_piece(&self, coord: impl Into<Coords>) -> Piece {
         let coord: Coords = coord.into();
         let x = coord.x as usize;
         let y = coord.y as usize;
