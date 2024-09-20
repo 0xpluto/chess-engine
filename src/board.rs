@@ -132,7 +132,6 @@ impl Board {
             }
         }
     }
-
     pub fn get_piece(&self, coord: impl Into<Coords>) -> Piece {
         let coord: Coords = coord.into();
         let x = coord.x as usize;
@@ -166,63 +165,12 @@ impl Board {
         let y = coord.y;
         let piece = self.state[y as usize][x as usize];
         match piece.piece_type {
-            PieceType::Pawn => {
-                self.pawn_moves(coord, piece.color)
-            }
-            PieceType::Bishop => {
-                self.bishop_moves(coord, piece.color)
-            }
-            PieceType::Rook => {
-                self.rook_moves(coord, piece.color)
-            }
-            PieceType::Queen => {
-                self.queen_moves(coord, piece.color)
-            }
-            PieceType::King => {
-                self.king_moves(coord, piece.color)
-            }
-            PieceType::Knight => {
-                let mut moves = vec![];
-                // 8 possible moves
-                let x = x as i8;
-                let y = y as i8;
-                // 4 moves move 2 in x and 1 in y
-                // 4 moves move 2 in y and 1 in x
-                let possible_moves = vec![
-                    (x + 2, y + 1),
-                    (x + 2, y - 1),
-                    (x - 2, y + 1),
-                    (x - 2, y - 1),
-                    (x + 1, y + 2),
-                    (x + 1, y - 2),
-                    (x - 1, y + 2),
-                    (x - 1, y - 2),
-                ];
-                for (nx, ny) in possible_moves {
-                    if nx < 0 || nx > 7 || ny < 0 || ny > 7 {
-                        continue;
-                    }
-                    let new_coord = Coords::new(nx as u8, ny as u8);
-                    if self.is_empty(new_coord) {
-                        moves.push(MoveCoords {
-                            piece,
-                            from: coord,
-                            to: new_coord,
-                            ..Default::default()
-                        });
-                    } else if self.piece_color(coord) != self.piece_color(new_coord){
-                        moves.push(MoveCoords {
-                            piece,
-                            from: coord,
-                            to: new_coord,
-                            takes: true,
-                            ..Default::default()
-                        });
-                    }
-                }
-                moves
-            }
-
+            PieceType::Pawn => self.pawn_moves(coord, piece.color),
+            PieceType::Bishop => self.bishop_moves(coord, piece.color),
+            PieceType::Rook => self.rook_moves(coord, piece.color),
+            PieceType::Queen => self.queen_moves(coord, piece.color),
+            PieceType::King => self.king_moves(coord, piece.color),
+            PieceType::Knight => self.knight_moves(coord, piece.color),
             _ => vec![],
         }
     }
@@ -335,7 +283,6 @@ impl Board {
     }
 
     pub fn move_piece(&mut self, from: impl Into<Coords>, to: impl Into<Coords>, promotion: Option<PieceType>) -> bool {
-        println!("Moving piece");
         let from: Coords = from.into();
         let to: Coords = to.into();
         let mc = match self.parse_request(from, to, promotion) {

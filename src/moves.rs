@@ -210,6 +210,52 @@ impl Board {
 
         moves
     }
+    pub fn knight_moves(&self, knight_start: Coords, color: Color) -> Vec<MoveCoords> {
+
+        let mut moves = vec![];
+        // 8 possible moves
+        let x = knight_start.x as i8;
+        let y = knight_start.y as i8;
+        let piece = Piece {
+            piece_type: PieceType::Knight,
+            color,
+        };
+        // 4 moves move 2 in x and 1 in y
+        // 4 moves move 2 in y and 1 in x
+        let possible_moves = vec![
+            (x + 2, y + 1),
+            (x + 2, y - 1),
+            (x - 2, y + 1),
+            (x - 2, y - 1),
+            (x + 1, y + 2),
+            (x + 1, y - 2),
+            (x - 1, y + 2),
+            (x - 1, y - 2),
+        ];
+        for (nx, ny) in possible_moves {
+            if nx < 0 || nx > 7 || ny < 0 || ny > 7 {
+                continue;
+            }
+            let new_coord = Coords::new(nx as u8, ny as u8);
+            if self.is_empty(new_coord) {
+                moves.push(MoveCoords {
+                    piece,
+                    from: knight_start,
+                    to: new_coord,
+                    ..Default::default()
+                });
+            } else if self.piece_color(knight_start) != self.piece_color(new_coord) {
+                moves.push(MoveCoords {
+                    piece,
+                    from: knight_start,
+                    to: new_coord,
+                    takes: true,
+                    ..Default::default()
+                });
+            }
+        }
+        moves
+    }
 
     pub fn queen_moves(&self, queen_start: Coords, color: Color) -> Vec<MoveCoords> {
         let mut moves = vec![];
@@ -254,7 +300,6 @@ impl Board {
                     continue;
                 }
 
-                
                 let new_x = (x as i8 + dx) as u8;
                 let new_y = (y as i8 + dy) as u8;
                 let new_coord = Coords::new(new_x, new_y);

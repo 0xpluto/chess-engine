@@ -164,10 +164,14 @@ impl EventHandler for BoardState {
                     } else {
                         None
                     };
-                    
                     let moved = self.board.move_piece(from, to, promotion);
                     println!("Valid move? {:?}", moved);
-                    self.selected_square = None;
+                    if moved {
+                        self.selected_square = None;
+                    } else {
+                        self.selected_square = Some(to);
+                    }
+                
                 } else {
                     self.selected_square = Some(to);
                 }
