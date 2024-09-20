@@ -10,5 +10,6 @@ fn main() -> GameResult {
         .build()?;
 
     let state = BoardState::new();
+    println!("{}", state.board);
     run(ctx, event_loop, state)
 }

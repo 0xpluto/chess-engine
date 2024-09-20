@@ -1,6 +1,6 @@
 use enum_iterator::Sequence;
 
-#[derive(Default, Copy, Clone, PartialEq, Eq, Hash, Sequence)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Sequence)]
 pub enum PieceType {
     #[default]
     Empty,
@@ -12,13 +12,13 @@ pub enum PieceType {
     King,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Sequence)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Sequence)]
 pub enum Color {
     White,
     Black,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Piece {
     pub piece_type: PieceType,
     pub color: Color,

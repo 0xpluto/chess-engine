@@ -1,5 +1,5 @@
 use crate::{
-    coords::{Coords, MoveCoords},
+    coords::{Coords, MoveCoords, KING_SIDE_BLACK_ROOK, KING_SIDE_WHITE_ROOK, QUEEN_SIDE_BLACK_ROOK, QUEEN_SIDE_WHITE_ROOK},
     pieces::{Color, Piece, PieceType},
 };
 
@@ -15,6 +15,7 @@ pub struct Board {
     /// White side is row 0 and 1, black side is row 6 and 7
     pub state: [[Piece; 8]; 8],
     pub turn: Color,
+    pub moves: Vec<MoveCoords>,
 }
 
 impl Board {
@@ -51,14 +52,87 @@ impl Board {
         Board {
             state,
             turn: Color::White,
+            moves: vec![],
         }
     }
-    fn piece_present(&self, piece: Piece, coord: impl Into<Coords>) -> bool {
+    pub fn piece_present(&self, piece: Piece, coord: impl Into<Coords>) -> bool {
         let coord: Coords = coord.into();
         let x = coord.x as usize;
         let y = coord.y as usize;
         self.state[y][x] == piece
     }
+    pub fn can_promote(&self, from: impl Into<Coords>) -> bool {
+        self.possible_moves(from).iter().any(|mc| mc.promotion.is_some())
+    }
+    pub fn is_promote(&self, from: impl Into<Coords>, to: impl Into<Coords>) -> bool {
+        let to: Coords = to.into();
+        self.possible_moves(from).iter().any(|mc| mc.to == to && mc.promotion.is_some())
+    }
+    fn can_take(&self, from: impl Into<Coords>, to: impl Into<Coords>) -> bool {
+        let to: Coords = to.into();
+        let moves = self.possible_moves(from);
+        moves.iter().any(|mc| mc.to == to && mc.takes)
+    }
+    pub fn can_castle(&self, color: Color, king_side: bool) -> bool {
+        if self.king_has_moved(color) {
+            return false;
+        }
+        if self.rook_has_moved(color, king_side) {
+            return false;
+        }
+        let y = match color {
+            Color::White => 7,
+            Color::Black => 0,
+        };
+        let x = match king_side {
+            true => 7,
+            false => 0,
+        };
+        let rook = self.state[y][x];
+        if rook.piece_type != PieceType::Rook {
+            // Should never happen
+            println!("Rook not present but hasn't moved");
+            return false;
+        }
+        let mut x = match king_side {
+            true => 6,
+            false => 1,
+        };
+        while x != 4 {
+            if !self.is_empty(Coords::new(x, y as u8)) {
+                return false;
+            }
+            x = match king_side {
+                true => x - 1,
+                false => x + 1,
+            };
+        }
+        true
+    }
+
+    pub fn king_has_moved(&self, color: Color) -> bool {
+        self.moves.iter().any(|mc| mc.piece.piece_type == PieceType::King && mc.piece.color == color)
+    }
+
+    pub fn rook_has_moved(&self, color: Color, king_side: bool) -> bool {
+        match color {
+            Color::White => {
+                if king_side {
+                    self.moves.iter().any(|mc| mc.piece.piece_type == PieceType::Rook && mc.piece.color == color && mc.from == KING_SIDE_WHITE_ROOK)
+                } else {
+                    self.moves.iter().any(|mc| mc.piece.piece_type == PieceType::Rook && mc.piece.color == color && mc.from == QUEEN_SIDE_WHITE_ROOK)
+                }
+            }
+            Color::Black => {
+                if king_side {
+                    self.moves.iter().any(|mc| mc.piece.piece_type == PieceType::Rook && mc.piece.color == color && mc.from == KING_SIDE_BLACK_ROOK)
+                } else {
+                    self.moves.iter().any(|mc| mc.piece.piece_type == PieceType::Rook && mc.piece.color == color && mc.from == QUEEN_SIDE_BLACK_ROOK)
+                }
+            }
+        }
+    }
+
     pub fn get_piece(&self, coord: impl Into<Coords>) -> Piece {
         let coord: Coords = coord.into();
         let x = coord.x as usize;
@@ -70,6 +144,12 @@ impl Board {
         let x = coord.x as usize;
         let y = coord.y as usize;
         self.state[y][x].piece_type == PieceType::Empty
+    }
+    pub fn movable_piece(&self, coord: impl Into<Coords>) -> bool {
+        let coord: Coords = coord.into();
+        let x = coord.x as usize;
+        let y = coord.y as usize;
+        self.state[y][x].color == self.turn
     }
     pub fn piece_color(&self, coord: impl Into<Coords>) -> Option<Color> {
         let coord: Coords = coord.into();
@@ -87,101 +167,7 @@ impl Board {
         let piece = self.state[y as usize][x as usize];
         match piece.piece_type {
             PieceType::Pawn => {
-                let mut moves = vec![];
-                let y = match piece.color {
-                    Color::White => {
-                        // Promotion
-                        if y == 1 && self.is_empty((x, 0)) {
-                            use PieceType::*;
-                            let mc = MoveCoords {
-                                piece,
-                                from: coord,
-                                to: Coords::new(x, 0),
-                                takes: false,
-                                promotion: None,
-                            };
-                            moves.extend(vec![
-                                mc.promote(Queen),
-                                mc.promote(Rook),
-                                mc.promote(Bishop),
-                                mc.promote(Knight),
-                            ]);
-
-                        // Starting move 2 squares
-                        } else if y == 6 && self.is_empty((x, 5)) && self.is_empty((x, 4)) {
-                            moves.push(MoveCoords {
-                                piece,
-                                from: coord,
-                                to: Coords::new(x, 4),
-                                takes: false,
-                                promotion: None,
-                            });
-                        }
-                        y - 1
-                    }
-                    Color::Black => {
-                        // Promotion
-                        if y == 6 && self.is_empty((x, 7)) {
-                            use PieceType::*;
-                            let mc = MoveCoords {
-                                piece,
-                                from: coord,
-                                to: Coords::new(x, 5),
-                                takes: false,
-                                promotion: None,
-                            };
-                            moves.extend(vec![
-                                mc.promote(Queen),
-                                mc.promote(Rook),
-                                mc.promote(Bishop),
-                                mc.promote(Knight),
-                            ]);
-
-                        // Starting move 2 squares
-                        } else if y == 1 && self.is_empty((x, 2)) && self.is_empty((x, 3)) {
-                            moves.push(MoveCoords {
-                                piece,
-                                from: coord,
-                                to: Coords::new(x, 3),
-                                takes: false,
-                                promotion: None,
-                            });
-                        }
-                        y + 1
-                    }
-                };
-                // Advance normally
-                if self.is_empty((x, y)) {
-                    moves.push(MoveCoords {
-                        piece,
-                        from: coord,
-                        to: Coords::new(x, y),
-                        takes: false,
-                        promotion: None,
-                    });
-                }
-                // Take diagonally to the left
-                if x > 0 && !self.is_empty(Coords::new(x - 1, y)) {
-                    moves.push(MoveCoords {
-                        piece,
-                        from: coord,
-                        to: Coords::new(x - 1, y),
-                        takes: true,
-                        promotion: None,
-                    });
-                }
-                // Take diagonally to the right
-                if x < 7 && !self.is_empty(Coords::new(x + 1, y)) {
-                    moves.push(MoveCoords {
-                        piece,
-                        from: coord,
-                        to: Coords::new(x + 1, y),
-                        takes: true,
-                        promotion: None,
-                    });
-                }
-
-                moves
+                self.pawn_moves(coord, piece.color)
             }
             PieceType::Bishop => {
                 self.bishop_moves(coord, piece.color)
@@ -193,49 +179,7 @@ impl Board {
                 self.queen_moves(coord, piece.color)
             }
             PieceType::King => {
-                let mut moves = vec![];
-                for dx in -1i8..=1i8 {
-                    for dy in -1i8..=1i8 {
-                        // Not moving
-                        if dx == 0 && dy == 0 {
-                            continue;
-                        }
-                        // Off the board x axis
-                        if x == 0 && dx == -1 || x == 7 && dx == 1 {
-                            continue;
-                        }
-                        // Off the board y axis
-                        if y == 0 && dy == -1 || y == 7 && dy == 1 {
-                            continue;
-                        }
-                        let new_x = (x as i8 + dx) as u8;
-                        let new_y = (y as i8 + dy) as u8;
-                        let new_coord = Coords::new(new_x, new_y);
-
-                        // TODO Check if the king is in check
-                        // TODO Check if the king is moving into check
-                        // TODO Check if the king is castling
-                        // TODO Check if the king is castling through check
-                        if self.is_empty(new_coord) {
-                            moves.push(MoveCoords {
-                                piece,
-                                from: coord,
-                                to: new_coord,
-                                takes: false,
-                                promotion: None,
-                            });
-                        } else {
-                            moves.push(MoveCoords {
-                                piece,
-                                from: coord,
-                                to: new_coord,
-                                takes: true,
-                                promotion: None,
-                            });
-                        }
-                    }
-                }
-                moves
+                self.king_moves(coord, piece.color)
             }
             PieceType::Knight => {
                 let mut moves = vec![];
@@ -264,8 +208,7 @@ impl Board {
                             piece,
                             from: coord,
                             to: new_coord,
-                            takes: false,
-                            promotion: None,
+                            ..Default::default()
                         });
                     } else if self.piece_color(coord) != self.piece_color(new_coord){
                         moves.push(MoveCoords {
@@ -273,7 +216,7 @@ impl Board {
                             from: coord,
                             to: new_coord,
                             takes: true,
-                            promotion: None,
+                            ..Default::default()
                         });
                     }
                 }
@@ -283,21 +226,129 @@ impl Board {
             _ => vec![],
         }
     }
-    fn valid_move(&self, mc: MoveCoords) -> bool {
+    fn valid_move(&self, mc: &MoveCoords) -> bool {
         // Check if the piece is present
         if !self.piece_present(mc.piece, mc.from) {
             return false;
         }
+        println!("Piece present at from");
         // Check if it's the correct turn
         if mc.piece.color != self.turn {
             return false;
         }
-        match mc.piece.piece_type {
-            PieceType::Pawn => {}
-            _ => {}
-        }
+        
+        self.possible_moves(mc.from).iter().any(|m| m == mc)
+    }
 
-        false
+    fn parse_request(&self, from: impl Into<Coords>, to: impl Into<Coords>, promotion: Option<PieceType>) -> Option<MoveCoords> {
+        let from: Coords = from.into();
+        let to: Coords = to.into();
+        let piece = self.get_piece(from);
+        let dx = to.x as i8 - from.x as i8;
+        let color = piece.color;
+        if dx == 2 && self.can_castle(color, true) {
+            return Some(MoveCoords {
+                piece,
+                from,
+                to,
+                takes: false,
+                king_side_castle: true,
+                queen_side_castle: false,
+                promotion: None,
+            });
+        } else if dx == -2 && self.can_castle(color, false) {
+            return Some(MoveCoords {
+                piece,
+                from,
+                to,
+                takes: false,
+                king_side_castle: false,
+                queen_side_castle: true,
+                promotion: None,
+            });
+        }
+        
+        let takes = self.can_take(from, to);
+        let promotion = if self.can_promote(from) {
+            promotion
+        } else {
+            None
+        };
+        Some(MoveCoords {
+            piece,
+            from,
+            to,
+            takes,
+            promotion,
+            ..Default::default()
+        })
+    }
+
+    fn toggle_turn(&mut self) {
+        self.turn = match self.turn {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        };
+    }
+
+    fn move_piece_unchecked(&mut self, from: impl Into<Coords>, to: impl Into<Coords>, promotion: Option<PieceType>, castle_king_side: bool, castle_queen_side: bool) {
+        let from: Coords = from.into();
+        let mut from_piece = self.get_piece(from);
+        let to: Coords = to.into();
+        if let Some(promotion) = promotion {
+            from_piece.piece_type = promotion;
+        }
+        match (from_piece.color, castle_king_side, castle_queen_side) {
+            (Color::White, true, false) => {
+                self.state[7][4] = Piece::empty();
+                self.state[7][5] = Piece::white(PieceType::Rook);
+                self.state[7][6] = Piece::white(PieceType::King);
+                self.state[7][7] = Piece::empty();
+            }
+            (Color::White, false, true) => {
+                self.state[7][0] = Piece::empty();
+                self.state[7][1] = Piece::empty();
+                self.state[7][2] = Piece::white(PieceType::King);
+                self.state[7][3] = Piece::white(PieceType::Rook);
+                self.state[7][4] = Piece::empty();
+            }
+            (Color::Black, true, false) => {
+                self.state[0][4] = Piece::empty();
+                self.state[0][5] = Piece::black(PieceType::Rook);
+                self.state[0][6] = Piece::black(PieceType::King);
+                self.state[0][7] = Piece::empty();
+            }
+            (Color::Black, false, true) => {
+                self.state[0][0] = Piece::empty();
+                self.state[0][1] = Piece::empty();
+                self.state[0][2] = Piece::black(PieceType::King);
+                self.state[0][3] = Piece::black(PieceType::Rook);
+                self.state[0][4] = Piece::empty();
+            },
+            (_, false, false) => {
+                self.state[to.y as usize][to.x as usize] = from_piece;
+                self.state[from.y as usize][from.x as usize] = Piece::empty();
+            }
+            _ => (),
+        }
+        self.toggle_turn();
+    }
+
+    pub fn move_piece(&mut self, from: impl Into<Coords>, to: impl Into<Coords>, promotion: Option<PieceType>) -> bool {
+        println!("Moving piece");
+        let from: Coords = from.into();
+        let to: Coords = to.into();
+        let mc = match self.parse_request(from, to, promotion) {
+            Some(mc) => mc,
+            None => return false,
+        };
+        println!("{:?}", mc);
+        if !self.valid_move(&mc) {
+            return false;
+        }
+        self.move_piece_unchecked(from, to, promotion, mc.king_side_castle, mc.queen_side_castle);
+        self.moves.push(mc);
+        true
     }
 }
 
@@ -315,8 +366,6 @@ impl std::fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::coords;
-
     use super::*;
     /*
     |bR||bN||bB||bQ||bK||bB||bN||bR|
@@ -365,8 +414,6 @@ mod tests {
         assert!(moves
             .iter()
             .any(|mc| mc.to == "c3".parse::<Coords>().unwrap()));
-
-        let moves = board.possible_moves("c1".parse::<Coords>().unwrap());
         
     }
 

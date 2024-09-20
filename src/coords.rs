@@ -1,12 +1,14 @@
 use crate::pieces::{Piece, PieceType};
 
-
+#[derive(Debug, PartialEq)]
 pub struct MoveCoords {
     pub piece: Piece,
     pub from: Coords,
     pub to: Coords,
     pub takes: bool,
     pub promotion: Option<PieceType>,
+    pub king_side_castle: bool,
+    pub queen_side_castle: bool,
 }
 
 impl MoveCoords {
@@ -17,11 +19,32 @@ impl MoveCoords {
             to: self.to,
             takes: self.takes,
             promotion: Some(piece),
+            king_side_castle: self.king_side_castle,
+            queen_side_castle: self.queen_side_castle,
         }
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+impl Default for MoveCoords {
+    fn default() -> Self {
+        MoveCoords {
+            piece: Piece::empty(),
+            from: Coords::new(0, 0),
+            to: Coords::new(0, 0),
+            takes: false,
+            promotion: None,
+            king_side_castle: false,
+            queen_side_castle: false,
+        }
+    }
+}
+
+pub const KING_SIDE_WHITE_ROOK: Coords = Coords { x: 7, y: 7 };
+pub const QUEEN_SIDE_WHITE_ROOK: Coords = Coords { x: 0, y: 7 };
+pub const KING_SIDE_BLACK_ROOK: Coords = Coords { x: 7, y: 0 };
+pub const QUEEN_SIDE_BLACK_ROOK: Coords = Coords { x: 0, y: 0 };
+
+#[derive(Copy, Clone, PartialEq)]
 pub struct Coords {
     pub x: u8,
     pub y: u8,
@@ -35,6 +58,15 @@ impl Coords {
         let x = (self.x as u8 + 97) as char;
         let y = 8 - self.y;
         (x, y)
+    }
+    pub fn row(&self) -> u8 {
+        self.y + 1
+    }
+    pub fn col(&self) -> char {
+        (self.x as u8 + 97) as char
+    }
+    pub fn rdr(&self) -> (u8, u8) {
+        (self.x, self.y)
     }
 }
 
@@ -64,9 +96,28 @@ impl std::fmt::Display for Coords {
     }
 }
 
+impl std::fmt::Debug for Coords {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let (x, y) = self.std();
+        write!(f, "{}{}", x, y)
+    }
+}
+
 impl From<(u8, u8)> for Coords {
     fn from((x, y): (u8, u8)) -> Self {
         Coords::new(x, y)
+    }
+}
+
+impl From<(usize, usize)> for Coords {
+    fn from((x, y): (usize, usize)) -> Self {
+        Coords::new(x as u8, y as u8)
+    }
+}
+
+impl From<(i32, i32)> for Coords {
+    fn from((x, y): (i32, i32)) -> Self {
+        Coords::new(x as u8, y as u8)
     }
 }
 
@@ -98,7 +149,8 @@ mod tests {
             from: "c2".parse().unwrap(),
             to: "c4".parse().unwrap(),
             takes: false,
-            promotion: None,
+            ..Default::default()
+
         };
         assert!(mc.to_string() == "c4");
         let mc = MoveCoords {
@@ -106,7 +158,7 @@ mod tests {
             from: "c2".parse().unwrap(),
             to: "d3".parse().unwrap(),
             takes: true,
-            promotion: None,
+            ..Default::default()
         };
         assert!(mc.to_string() == "cxd3");
         let mc = MoveCoords {
@@ -114,7 +166,7 @@ mod tests {
             from: "a1".parse().unwrap(),
             to: "a8".parse().unwrap(),
             takes: true,
-            promotion: None,
+            ..Default::default()
         };
         assert!(mc.to_string() == "♖xa8");
         let mc = MoveCoords {
@@ -122,7 +174,7 @@ mod tests {
             from: "a1".parse().unwrap(),
             to: "a8".parse().unwrap(),
             takes: false,
-            promotion: None,
+            ..Default::default()
         };
         assert!(mc.to_string() == "♖a8");
         let mc = MoveCoords {
@@ -130,7 +182,7 @@ mod tests {
             from: "a1".parse().unwrap(),
             to: "h1".parse().unwrap(),
             takes: true,
-            promotion: None,
+            ..Default::default()
         };
         assert!(mc.to_string() == "♖xh1");
         let mc = MoveCoords {
@@ -138,7 +190,7 @@ mod tests {
             from: "a1".parse().unwrap(),
             to: "h1".parse().unwrap(),
             takes: false,
-            promotion: None,
+            ..Default::default()
         };
         assert!(mc.to_string() == "♕h1");
     }
@@ -147,6 +199,12 @@ mod tests {
     fn test_coords_std() {
         assert_eq!(Coords::new(0, 0).std(), ('a', 8));
         assert_eq!(Coords::new(7, 7).std(), ('h', 1));
+    }
+
+    #[test]
+    fn test_correct_coords() {
+        let coords: Coords = (0, 0).into();
+        println!("{:?}", coords.std());
     }
 
     #[test]
